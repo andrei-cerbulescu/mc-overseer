@@ -1,0 +1,11 @@
+{
+  "instances": [
+    {
+      "name": "survival",
+      "publicPort": 25566,
+      "privatePort": 25565,
+      "path": "./servers/server-1",
+      "startCommand": "java -Xmx8192M -Xms8192M -jar server.jar"
+    }
+  ]
+}
