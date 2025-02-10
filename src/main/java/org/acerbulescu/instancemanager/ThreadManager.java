@@ -4,13 +4,10 @@ import com.google.inject.Inject;
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.models.ServerInstance;
 import org.acerbulescu.models.ThreadInstance;
+import org.acerbulescu.processmanager.ProcessManager;
 import org.acerbulescu.reverseproxy.ReverseProxyFactory;
 
-import javax.annotation.PreDestroy;
 import java.io.*;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,6 +16,9 @@ public class ThreadManager implements InstanceManager {
 
   @Inject
   ReverseProxyFactory reverseProxyFactory;
+
+  @Inject
+  ProcessManager processManager;
 
   List<ThreadInstance> instances = new ArrayList<>();
 
@@ -63,7 +63,7 @@ public class ThreadManager implements InstanceManager {
   }
 
   private void createInstanceThread(ThreadInstance instance) {
-    var processBuilder = new ProcessBuilder(getShell());
+    var processBuilder = new ProcessBuilder(processManager.getShell());
     processBuilder.directory(new File(instance.getInstance().getPath()));
 
     try {
@@ -87,25 +87,36 @@ public class ThreadManager implements InstanceManager {
   }
 
   @Override
-  public void suspendInstance(String instanceName) {
-    var threadInstance = getThreadInstance(instanceName);
-
-    //noinspection deprecation
-    threadInstance.getThread().suspend();
+  public void suspendInstance(ServerInstance instance) {
+    if (!instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.SUSPENDED)) {
+      var threadInstance = getThreadInstance(instance.getName());
+      processManager.suspendThread(threadInstance);
+      threadInstance.getInstance().suspend();
+    }
   }
 
   @Override
-  public void resumeInstance(String instanceName) {
-    var threadInstance = getThreadInstance(instanceName);
+  public void resumeInstance(ServerInstance instance) {
+    var threadInstance = getThreadInstance(instance.getName());
 
-    //noinspection deprecation
-    threadInstance.getThread().resume();
+    if (instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.SUSPENDED)) {
+      processManager.resumeThread(threadInstance);
+      instance.resume();
+    }
+    try {
+      while (!threadInstance.getInstance().getStatus(getTargetHost(threadInstance.getInstance())).equals(ServerInstance.Status.HEALTHY)) {
+        Thread.sleep(1000);
+      }
+    } catch (InterruptedException e) {
+      log.error("Could not await instance to be healthy: " + instance.getName(), e);
+    }
   }
 
   @Override
-  public void stopInstance(String instanceName) {
-    var threadInstance = getThreadInstance(instanceName);
-    resumeInstance(instanceName);
+  public void stopInstance(ServerInstance instance) {
+    log.info("Stopping instance: " + instance.getName());
+    var threadInstance = getThreadInstance(instance.getName());
+    resumeInstance(instance);
 
     try {
       sendCommand(threadInstance.getWriter(), "stop");
@@ -115,22 +126,7 @@ public class ThreadManager implements InstanceManager {
   }
 
   @Override
-  public ServerInstance.HealthStatus getInstanceHealth(String instanceName) {
-    var instance = getThreadInstance(instanceName).getInstance();
-    try {
-      var address = InetAddress.getByName("127.0.0.1:" + instance.getPrivatePort().toString());
-      if (address.isReachable(2000)) {
-        return ServerInstance.HealthStatus.HEALTHY;
-      }
-
-      return ServerInstance.HealthStatus.UNHEALTHY;
-    } catch (Exception e) {
-      return ServerInstance.HealthStatus.UNHEALTHY;
-    }
-  }
-
-  @Override
-  public String getTargetHost(String instanceName) {
+  public String getTargetHost(ServerInstance instance) {
     return "127.0.0.1";
   }
 
@@ -145,7 +141,7 @@ public class ThreadManager implements InstanceManager {
   public void awaitHealthy(ServerInstance instance) {
     log.info("Awaiting instance to be healthy: " + instance.getName());
     try {
-      while (!isPortOpen(getTargetHost(instance.getName()), instance.getPrivatePort(), 10 * 60 * 1000)) {
+      while (!instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.HEALTHY)) {
         Thread.sleep(1000);
       }
     } catch (Exception e) {
@@ -154,18 +150,16 @@ public class ThreadManager implements InstanceManager {
     log.info("Instance is healthy: " + instance.getName());
   }
 
-  public static boolean isPortOpen(String host, int port, int timeout) {
-    try (var socket = new Socket()) {
-      socket.connect(new InetSocketAddress(host, port), timeout);
-      return true; // Port is open
-    } catch (IOException e) {
-      return false; // Port is closed or unreachable
+  @Override
+  public void scheduleSuspend(ServerInstance instance) {
+    log.info("Scheduling instance for suspension: " + instance.getName());
+    try {
+      Thread.sleep(5 * 1000);
+    } catch (InterruptedException e) {
+      log.error("Could not sleep before suspending: ", e);
     }
-  }
 
-  private static String getShell() {
-    String os = System.getProperty("os.name").toLowerCase();
-    return os.contains("win") ? "cmd.exe" : "/bin/sh";
+    suspendInstance(instance);
   }
 
   private void sendCommand(BufferedWriter writer, String command) throws IOException {

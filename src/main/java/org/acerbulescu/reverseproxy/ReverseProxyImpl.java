@@ -36,7 +36,13 @@ public class ReverseProxyImpl implements ReverseProxy {
 
   @SneakyThrows
   private void handleClient(Socket clientSocket) {
-    var targetSocket = new Socket(instanceManager.getTargetHost(serverInstance.getName()), serverInstance.getPrivatePort());
+    var clientUuid = UUID.randomUUID().toString();
+    log.info("Client with uuid=" + clientUuid + " is connecting to instance: " + serverInstance.getName());
+    if (serverInstance.getStatus(instanceManager.getTargetHost(serverInstance)).equals(ServerInstance.Status.SUSPENDED)) {
+      instanceManager.resumeInstance(serverInstance);
+    }
+
+    var targetSocket = new Socket(instanceManager.getTargetHost(serverInstance), serverInstance.getPrivatePort());
     var clientInput = clientSocket.getInputStream();
     var clientOutput = clientSocket.getOutputStream();
     var targetInput = targetSocket.getInputStream();
@@ -54,6 +60,8 @@ public class ReverseProxyImpl implements ReverseProxy {
     backwardThread.join();
 
     serverInstance.decrementConnectedPlayers();
+    log.info("Client with uuid=" + clientUuid + " disconnected from instance: " + serverInstance.getName());
+    instanceManager.scheduleSuspend(serverInstance);
   }
 
   private static void forwardData(InputStream input, OutputStream output) {
