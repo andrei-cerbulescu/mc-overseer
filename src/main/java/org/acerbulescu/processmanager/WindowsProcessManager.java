@@ -1,7 +1,5 @@
 package org.acerbulescu.processmanager;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.models.ThreadInstance;
 

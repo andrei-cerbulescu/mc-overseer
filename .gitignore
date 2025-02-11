@@ -11,6 +11,7 @@ target/
 *.iws
 *.iml
 *.ipr
+./config.json
 
 ### Eclipse ###
 .apt_generated
@@ -38,3 +39,4 @@ build/
 .DS_Store
 /servers/
 /.idea/
+/config.json

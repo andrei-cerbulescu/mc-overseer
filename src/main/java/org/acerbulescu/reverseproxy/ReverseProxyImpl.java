@@ -1,6 +1,5 @@
 package org.acerbulescu.reverseproxy;
 
-import com.google.inject.Inject;
 import lombok.Builder;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
@@ -57,7 +56,9 @@ public class ReverseProxyImpl implements ReverseProxy {
     backwardThread.start();
 
     forwardThread.join();
-    backwardThread.join();
+
+    clientSocket.close();
+    targetSocket.close();
 
     serverInstance.decrementConnectedPlayers();
     log.info("Client with uuid=" + clientUuid + " disconnected from instance: " + serverInstance.getName());
