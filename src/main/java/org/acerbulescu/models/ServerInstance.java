@@ -1,9 +1,6 @@
 package org.acerbulescu.models;
 
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -12,6 +9,8 @@ import java.net.Socket;
 @Getter
 @Setter
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class ServerInstance {
   private String name;
   private Integer publicPort;
@@ -20,7 +19,7 @@ public class ServerInstance {
   private String path;
   private String startCommand;
 
-  @Getter(AccessLevel.NONE)
+  @Getter(AccessLevel.PROTECTED)
   @Setter(AccessLevel.NONE)
   private Status internalStatus = Status.UNHEALTHY;
 

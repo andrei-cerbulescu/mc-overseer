@@ -10,14 +10,25 @@ import java.io.BufferedWriter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ThreadInstance {
-  Thread thread;
+public class ThreadInstance extends ServerInstance {
 
-  ServerInstance instance;
+  private Thread thread;
 
-  BufferedWriter writer;
+  private BufferedWriter writer;
 
-  BufferedReader reader;
+  private BufferedReader reader;
 
-  BufferedReader errorReader;
+  private BufferedReader errorReader;
+
+  public ThreadInstance(ServerInstance s) {
+    super(
+        s.getName(),
+        s.getPublicPort(),
+        s.getPrivatePort(),
+        s.getConnectedPlayers(),
+        s.getPath(),
+        s.getStartCommand(),
+        Status.UNHEALTHY
+    );
+  }
 }

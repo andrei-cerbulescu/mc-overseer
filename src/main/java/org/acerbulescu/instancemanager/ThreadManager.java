@@ -22,30 +22,22 @@ public class ThreadManager implements InstanceManager {
 
   List<ThreadInstance> instances = new ArrayList<>();
 
-  private ThreadInstance getThreadInstance(String name) {
+  @Override
+  public ThreadInstance getInstance(String name) {
     return instances.stream()
-        .filter(e -> e.getInstance().getName().equals(name))
+        .filter(e -> e.getName().equals(name))
         .findFirst()
         .orElseThrow(() -> new RuntimeException("Instance could not be found"));
   }
 
   @Override
-  public ServerInstance getInstance(String name) {
-    return getThreadInstance(name)
-        .getInstance();
-  }
-
-  @Override
   public void shutdownAllInstances() {
-    instances.forEach(e -> {
-      stopInstance(e.getInstance());
-    });
+    instances.forEach(this::stopInstance);
   }
 
   @Override
   public void startInstance(ServerInstance instance) {
-    var threadInstance = new ThreadInstance();
-    threadInstance.setInstance(instance);
+    var threadInstance = new ThreadInstance(instance);
 
     var thread = new Thread(() -> createInstanceThread(threadInstance), "SERVER-" + instance.getName());
     threadInstance.setThread(thread);
@@ -57,7 +49,7 @@ public class ThreadManager implements InstanceManager {
 
   private void createInstanceThread(ThreadInstance instance) {
     var processBuilder = new ProcessBuilder(processManager.getShell());
-    processBuilder.directory(new File(instance.getInstance().getPath()));
+    processBuilder.directory(new File(instance.getPath()));
 
     try {
       Process process = processBuilder.start();
@@ -70,34 +62,34 @@ public class ThreadManager implements InstanceManager {
       instance.setReader(reader);
       instance.setErrorReader(errorReader);
 
-      sendCommand(writer, instance.getInstance().getStartCommand());
+      sendCommand(writer, instance.getStartCommand());
 
       var exitCode = process.waitFor();
-      log.info("Instance " + instance.getInstance().getName() + " exited with code: " + exitCode);
+      log.info("Instance " + instance.getName() + " exited with code: " + exitCode);
     } catch (Exception e) {
-      log.error("Instance " + instance.getInstance().getName() + " could not start due to error: ", e);
+      log.error("Instance " + instance.getName() + " could not start due to error: ", e);
     }
   }
 
   @Override
   public void suspendInstance(ServerInstance instance) {
     if (!instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.SUSPENDED)) {
-      var threadInstance = getThreadInstance(instance.getName());
+      var threadInstance = getInstance(instance.getName());
       processManager.suspendThread(threadInstance);
-      threadInstance.getInstance().suspend();
+      threadInstance.suspend();
     }
   }
 
   @Override
   public void resumeInstance(ServerInstance instance) {
-    var threadInstance = getThreadInstance(instance.getName());
+    var threadInstance = getInstance(instance.getName());
 
     if (instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.SUSPENDED)) {
       processManager.resumeThread(threadInstance);
       instance.resume();
     }
     try {
-      while (!threadInstance.getInstance().getStatus(getTargetHost(threadInstance.getInstance())).equals(ServerInstance.Status.HEALTHY)) {
+      while (!threadInstance.getStatus(getTargetHost(threadInstance)).equals(ServerInstance.Status.HEALTHY)) {
         Thread.sleep(1000);
       }
     } catch (InterruptedException e) {
@@ -107,15 +99,15 @@ public class ThreadManager implements InstanceManager {
 
   @Override
   public void stopInstance(ServerInstance instance) {
-    var threadInstance = getThreadInstance(instance.getName());
+    var threadInstance = getInstance(instance.getName());
     resumeInstance(instance);
 
     log.info("Stopping instance: " + instance.getName());
-    
+
     try {
       sendCommand(threadInstance.getWriter(), "stop");
     } catch (Exception e) {
-      log.error("Instance " + threadInstance.getInstance().getName() + " cannot be stopped: ", e);
+      log.error("Instance " + threadInstance.getName() + " cannot be stopped: ", e);
     }
   }
 

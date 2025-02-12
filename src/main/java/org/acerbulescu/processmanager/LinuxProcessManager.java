@@ -15,21 +15,21 @@ public class LinuxProcessManager implements ProcessManager {
 
   @Override
   public void suspendThread(ThreadInstance threadInstance) {
-    log.info("Suspending instance: " + threadInstance.getInstance().getName());
+    log.info("Suspending instance: " + threadInstance.getName());
     try {
       new ProcessBuilder("kill", "-STOP", String.valueOf(getPid(threadInstance))).start();
     } catch (IOException e) {
-      log.error("Could not suspend instance: " + threadInstance.getInstance().getName());
+      log.error("Could not suspend instance: " + threadInstance.getName());
     }
   }
 
   @Override
   public void resumeThread(ThreadInstance threadInstance) {
-    log.info("Resuming instance: " + threadInstance.getInstance().getName());
+    log.info("Resuming instance: " + threadInstance.getName());
     try {
       new ProcessBuilder("kill", "-CONT", String.valueOf(getPid(threadInstance))).start();
     } catch (IOException e) {
-      log.error("Could not resume instance: " + threadInstance.getInstance().getName());
+      log.error("Could not resume instance: " + threadInstance.getName());
     }
   }
 
