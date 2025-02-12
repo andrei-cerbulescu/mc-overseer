@@ -40,3 +40,4 @@ build/
 /servers/
 /.idea/
 /config.json
+/config/config.json

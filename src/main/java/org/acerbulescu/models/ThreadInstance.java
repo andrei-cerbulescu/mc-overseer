@@ -2,7 +2,6 @@ package org.acerbulescu.models;
 
 import lombok.*;
 
-import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 
@@ -12,13 +11,13 @@ import java.io.BufferedWriter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ThreadInstance {
-    Thread thread;
+  Thread thread;
 
-    ServerInstance instance;
+  ServerInstance instance;
 
-    BufferedWriter writer;
+  BufferedWriter writer;
 
-    BufferedReader reader;
+  BufferedReader reader;
 
-    BufferedReader errorReader;
+  BufferedReader errorReader;
 }

@@ -49,8 +49,8 @@ public class ReverseProxyImpl implements ReverseProxy {
 
     serverInstance.incrementConnectedPlayers();
 
-    Thread forwardThread = new Thread(() -> forwardData(clientInput, targetOutput), "FORWARD-THREAD-" + serverInstance.getName() + "-" + UUID.randomUUID().toString());
-    Thread backwardThread = new Thread(() -> forwardData(targetInput, clientOutput), "BACKWARD-THREAD-" + serverInstance.getName() + "-" + UUID.randomUUID().toString());
+    Thread forwardThread = new Thread(() -> forwardData(clientInput, targetOutput), "FORWARD-THREAD-" + serverInstance.getName() + "-" + UUID.randomUUID());
+    Thread backwardThread = new Thread(() -> forwardData(targetInput, clientOutput), "BACKWARD-THREAD-" + serverInstance.getName() + "-" + UUID.randomUUID());
 
     forwardThread.start();
     backwardThread.start();

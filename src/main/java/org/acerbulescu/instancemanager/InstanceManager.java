@@ -3,23 +3,23 @@ package org.acerbulescu.instancemanager;
 import org.acerbulescu.models.ServerInstance;
 
 public interface InstanceManager {
-  public ServerInstance getInstance(String name);
+  ServerInstance getInstance(String name);
 
-  public void shutdownAllInstances();
+  void shutdownAllInstances();
 
-  public void startInstance(ServerInstance instance);
+  void startInstance(ServerInstance instance);
 
-  public void suspendInstance(ServerInstance instance);
+  void suspendInstance(ServerInstance instance);
 
-  public void resumeInstance(ServerInstance instance);
+  void resumeInstance(ServerInstance instance);
 
-  public void stopInstance(ServerInstance instance);
+  void stopInstance(ServerInstance instance);
 
-  public String getTargetHost(ServerInstance instance);
+  String getTargetHost(ServerInstance instance);
 
-  public void startReverseProxy(ServerInstance instance);
+  void startReverseProxy(ServerInstance instance);
 
-  public void awaitHealthy(ServerInstance instance);
+  void awaitHealthy(ServerInstance instance);
 
   void scheduleSuspend(ServerInstance instance);
 }

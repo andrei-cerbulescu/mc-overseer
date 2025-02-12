@@ -38,12 +38,7 @@ public class ThreadManager implements InstanceManager {
   @Override
   public void shutdownAllInstances() {
     instances.forEach(e -> {
-      try {
-        log.info("Sending command for shutdown for instance: " + e.getInstance().getName());
-        sendCommand(e.getWriter(), "stop");
-      } catch (IOException ex) {
-        log.error("Instance " + e.getInstance().getName() + " could not be shutdown: ", e);
-      }
+      stopInstance(e.getInstance());
     });
   }
 
@@ -52,9 +47,7 @@ public class ThreadManager implements InstanceManager {
     var threadInstance = new ThreadInstance();
     threadInstance.setInstance(instance);
 
-    var thread = new Thread(() -> {
-      createInstanceThread(threadInstance);
-    }, "SERVER-" + instance.getName());
+    var thread = new Thread(() -> createInstanceThread(threadInstance), "SERVER-" + instance.getName());
     threadInstance.setThread(thread);
 
     instances.add(threadInstance);
@@ -114,10 +107,11 @@ public class ThreadManager implements InstanceManager {
 
   @Override
   public void stopInstance(ServerInstance instance) {
-    log.info("Stopping instance: " + instance.getName());
     var threadInstance = getThreadInstance(instance.getName());
     resumeInstance(instance);
 
+    log.info("Stopping instance: " + instance.getName());
+    
     try {
       sendCommand(threadInstance.getWriter(), "stop");
     } catch (Exception e) {
@@ -132,9 +126,7 @@ public class ThreadManager implements InstanceManager {
 
   @Override
   public void startReverseProxy(ServerInstance instance) {
-    new Thread(() -> {
-      reverseProxyFactory.from(instance).start();
-    }, "SERVER-" + instance.getName() + "-PROXY-MANAGER").start();
+    new Thread(() -> reverseProxyFactory.from(instance).start(), "SERVER-" + instance.getName() + "-PROXY-MANAGER").start();
   }
 
   @Override

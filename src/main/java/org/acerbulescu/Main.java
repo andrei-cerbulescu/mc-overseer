@@ -25,13 +25,12 @@ public class Main {
     Runtime.getRuntime().addShutdownHook(new Thread(instanceManager::shutdownAllInstances, "shutdown-thread"));
 
     config.getInstances().stream().map(ServerInstanceMapper.INSTANCE::from).forEach(instance -> {
-          var thread = new Thread(() -> {
+          new Thread(() -> {
             instanceManager.startInstance(instance);
             instanceManager.awaitHealthy(instance);
             instanceManager.startReverseProxy(instance);
-          });
-
-          thread.start();
+            instanceManager.scheduleSuspend(instance);
+          }).start();
         }
     );
 
