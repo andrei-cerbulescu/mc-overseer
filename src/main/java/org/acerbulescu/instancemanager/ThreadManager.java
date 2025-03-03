@@ -45,10 +45,13 @@ public class ThreadManager implements InstanceManager {
     instances.add(threadInstance);
 
     thread.start();
+
+    awaitHealthy(instance);
+    startReverseProxy(instance);
   }
 
   private void createInstanceThread(ThreadInstance instance) {
-    var processBuilder = new ProcessBuilder(processManager.getShell());
+    var processBuilder = new ProcessBuilder(instance.getStartCommand().split(" "));
     processBuilder.directory(new File(instance.getPath()));
 
     try {
@@ -62,12 +65,10 @@ public class ThreadManager implements InstanceManager {
       instance.setReader(reader);
       instance.setErrorReader(errorReader);
 
-      sendCommand(writer, instance.getStartCommand());
-
       var exitCode = process.waitFor();
-      log.info("Instance " + instance.getName() + " exited with code: " + exitCode);
+      log.info("Instance={} exited with code={}", instance.getName(), exitCode);
     } catch (Exception e) {
-      log.error("Instance " + instance.getName() + " could not start due to error: ", e);
+      log.error("Instance={} could not start due to error: ", instance.getName(), e);
     }
   }
 
@@ -93,7 +94,7 @@ public class ThreadManager implements InstanceManager {
         Thread.sleep(1000);
       }
     } catch (InterruptedException e) {
-      log.error("Could not await instance to be healthy: " + instance.getName(), e);
+      log.error("Could not await instance to be healthy={}", instance.getName(), e);
     }
   }
 
@@ -107,7 +108,7 @@ public class ThreadManager implements InstanceManager {
     try {
       sendCommand(threadInstance.getWriter(), "stop");
     } catch (Exception e) {
-      log.error("Instance " + threadInstance.getName() + " cannot be stopped: ", e);
+      log.error("Instance={} cannot be stopped", threadInstance.getName(), e);
     }
   }
 
@@ -116,14 +117,12 @@ public class ThreadManager implements InstanceManager {
     return "127.0.0.1";
   }
 
-  @Override
-  public void startReverseProxy(ServerInstance instance) {
-    new Thread(() -> reverseProxyFactory.from(instance).start(), "SERVER-" + instance.getName() + "-PROXY-MANAGER").start();
+  private void startReverseProxy(ServerInstance instance) {
+    new Thread(() -> reverseProxyFactory.from(this, instance).start(), "SERVER-" + instance.getName() + "-PROXY-MANAGER").start();
   }
 
-  @Override
-  public void awaitHealthy(ServerInstance instance) {
-    log.info("Awaiting instance to be healthy: " + instance.getName());
+  private void awaitHealthy(ServerInstance instance) {
+    log.info("Awaiting instance={} to be healthy", instance.getName());
     try {
       while (!instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.HEALTHY)) {
         Thread.sleep(1000);
@@ -131,19 +130,7 @@ public class ThreadManager implements InstanceManager {
     } catch (Exception e) {
       e.printStackTrace();
     }
-    log.info("Instance is healthy: " + instance.getName());
-  }
-
-  @Override
-  public void scheduleSuspend(ServerInstance instance) {
-    log.info("Scheduling instance for suspension: " + instance.getName());
-    try {
-      Thread.sleep(5 * 1000);
-    } catch (InterruptedException e) {
-      log.error("Could not sleep before suspending: ", e);
-    }
-
-    suspendInstance(instance);
+    log.info("Instance={} is healthy", instance.getName());
   }
 
   private void sendCommand(BufferedWriter writer, String command) throws IOException {

@@ -5,6 +5,7 @@ import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.instancemanager.InstanceManager;
 import org.acerbulescu.models.ServerInstance;
+import org.apache.logging.log4j.core.util.Constants;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @Log4j2
 public class ReverseProxyImpl implements ReverseProxy {
   InstanceManager instanceManager;
+
   ServerInstance serverInstance;
 
   @Override
@@ -24,19 +26,21 @@ public class ReverseProxyImpl implements ReverseProxy {
     try {
       log.info("Creating reverse proxy for instance: " + serverInstance.getName());
       var serverSocket = new ServerSocket(serverInstance.getPublicPort());
+      scheduleSuspend();
       while (true) {
         var clientSocket = serverSocket.accept();
         new Thread(() -> handleClient(clientSocket), "SERVER-" + serverInstance.getName() + "-PROXY").start();
       }
     } catch (IOException e) {
       log.error("Cannot create reverse proxy for instance " + serverInstance.getName(), e);
+      throw new RuntimeException(e);
     }
   }
 
   @SneakyThrows
   private void handleClient(Socket clientSocket) {
     var clientUuid = UUID.randomUUID().toString();
-    log.info("Client with uuid=" + clientUuid + " is connecting to instance: " + serverInstance.getName());
+    log.info("Client with uuid={} is connecting to instance={}", clientUuid, serverInstance.getName());
     if (serverInstance.getStatus(instanceManager.getTargetHost(serverInstance)).equals(ServerInstance.Status.SUSPENDED)) {
       instanceManager.resumeInstance(serverInstance);
     }
@@ -61,8 +65,23 @@ public class ReverseProxyImpl implements ReverseProxy {
     targetSocket.close();
 
     serverInstance.decrementConnectedPlayers();
-    log.info("Client with uuid=" + clientUuid + " disconnected from instance: " + serverInstance.getName());
-    instanceManager.scheduleSuspend(serverInstance);
+    log.info("Client with uuid={} disconnected from instance={}", clientUuid, serverInstance.getName());
+    scheduleSuspend();
+  }
+
+  private void scheduleSuspend() {
+    log.info("Scheduling instance={} for suspension", serverInstance.getName());
+    try {
+      Thread.sleep(10 * Constants.MILLIS_IN_SECONDS);
+    } catch (InterruptedException e) {
+      log.info("Could not await instance={} for suspension. Proceeding immediately", serverInstance.getName());
+    }
+
+    if (serverInstance.getConnectedPlayers().equals(0)) {
+      instanceManager.suspendInstance(serverInstance);
+    } else {
+      log.info("Not suspending instance={} because it has active players", serverInstance.getName());
+    }
   }
 
   private static void forwardData(InputStream input, OutputStream output) {

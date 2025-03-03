@@ -25,10 +25,8 @@ public class ThreadInstance extends ServerInstance {
         s.getName(),
         s.getPublicPort(),
         s.getPrivatePort(),
-        s.getConnectedPlayers(),
         s.getPath(),
-        s.getStartCommand(),
-        Status.UNHEALTHY
+        s.getStartCommand()
     );
   }
 }

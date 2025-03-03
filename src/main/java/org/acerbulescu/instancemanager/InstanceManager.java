@@ -16,10 +16,4 @@ public interface InstanceManager {
   void stopInstance(ServerInstance instance);
 
   String getTargetHost(ServerInstance instance);
-
-  void startReverseProxy(ServerInstance instance);
-
-  void awaitHealthy(ServerInstance instance);
-
-  void scheduleSuspend(ServerInstance instance);
 }

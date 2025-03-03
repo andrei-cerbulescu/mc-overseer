@@ -9,11 +9,6 @@ import lombok.extern.log4j.Log4j2;
 @Log4j2
 public class LinuxProcessManager implements ProcessManager {
   @Override
-  public String getShell() {
-    return "/bin/sh";
-  }
-
-  @Override
   public void suspendThread(ThreadInstance threadInstance) {
     log.info("Suspending instance: " + threadInstance.getName());
     try {

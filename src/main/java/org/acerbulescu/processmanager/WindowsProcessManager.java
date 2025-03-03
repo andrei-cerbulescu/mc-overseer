@@ -8,11 +8,6 @@ import java.io.IOException;
 @Log4j2
 public class WindowsProcessManager implements ProcessManager {
   @Override
-  public String getShell() {
-    return "cmd.exe";
-  }
-
-  @Override
   public void suspendThread(ThreadInstance threadInstance) {
     log.info("Suspending instance: " + threadInstance.getName());
     try {

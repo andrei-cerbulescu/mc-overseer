@@ -1,10 +1,10 @@
 package org.acerbulescu.models;
 
 import lombok.*;
+import me.dilley.MineStat;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Getter
 @Setter
@@ -15,13 +15,15 @@ public class ServerInstance {
   private String name;
   private Integer publicPort;
   private Integer privatePort;
-  private Integer connectedPlayers = 0;
   private String path;
   private String startCommand;
 
   @Getter(AccessLevel.PROTECTED)
   @Setter(AccessLevel.NONE)
-  private Status internalStatus = Status.UNHEALTHY;
+  private final AtomicBoolean isSuspended = new AtomicBoolean(false);
+  @Getter(AccessLevel.PROTECTED)
+  @Setter(AccessLevel.NONE)
+  private final AtomicInteger connectedPlayers = new AtomicInteger(0);
 
   public enum Status {
     SUSPENDED("SUSPENDED"),
@@ -33,42 +35,35 @@ public class ServerInstance {
   }
 
   public void suspend() {
-    internalStatus = Status.SUSPENDED;
+    isSuspended.set(true);
   }
 
   public void resume() {
-    internalStatus = Status.UNHEALTHY;
+    isSuspended.set(false);
   }
 
   public Status getStatus(String host) {
-    if (internalStatus.equals(Status.SUSPENDED)) {
+    if (isSuspended.get()) {
       return Status.SUSPENDED;
     }
 
-    if (isPortOpen(host, privatePort, 1000)) {
-      internalStatus = Status.HEALTHY;
+    if (new MineStat(host, privatePort, 1).isServerUp()) {
+      return Status.HEALTHY;
     } else {
-      internalStatus = Status.UNHEALTHY;
+      return Status.UNHEALTHY;
     }
-
-    return internalStatus;
   }
 
   public void incrementConnectedPlayers() {
-    connectedPlayers++;
+    connectedPlayers.incrementAndGet();
   }
 
   public void decrementConnectedPlayers() {
-    connectedPlayers--;
+    connectedPlayers.decrementAndGet();
   }
 
-  private boolean isPortOpen(String host, int port, int timeout) {
-    try (var socket = new Socket()) {
-      socket.connect(new InetSocketAddress(host, port), timeout);
-      return true;
-    } catch (IOException e) {
-      return false;
-    }
+  public Integer getConnectedPlayers() {
+    return connectedPlayers.get();
   }
 
 }

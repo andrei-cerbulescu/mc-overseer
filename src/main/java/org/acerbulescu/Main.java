@@ -27,9 +27,6 @@ public class Main {
     config.getInstances().stream().map(ServerInstanceMapper.INSTANCE::from).forEach(instance -> {
           new Thread(() -> {
             instanceManager.startInstance(instance);
-            instanceManager.awaitHealthy(instance);
-            instanceManager.startReverseProxy(instance);
-            instanceManager.scheduleSuspend(instance);
           }).start();
         }
     );
