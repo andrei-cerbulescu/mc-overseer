@@ -24,7 +24,7 @@ public class ReverseProxyImpl implements ReverseProxy {
   @Override
   public void start() {
     try {
-      log.info("Creating reverse proxy for instance: " + serverInstance.getName());
+      log.info("Creating reverse proxy for instance={} on port={}", serverInstance.getName(), serverInstance.getPublicPort());
       var serverSocket = new ServerSocket(serverInstance.getPublicPort());
       scheduleSuspend();
       while (true) {
@@ -32,7 +32,7 @@ public class ReverseProxyImpl implements ReverseProxy {
         new Thread(() -> handleClient(clientSocket), "SERVER-" + serverInstance.getName() + "-PROXY").start();
       }
     } catch (IOException e) {
-      log.error("Cannot create reverse proxy for instance " + serverInstance.getName(), e);
+      log.error("Cannot create reverse proxy for instance={}", serverInstance.getName(), e);
       throw new RuntimeException(e);
     }
   }

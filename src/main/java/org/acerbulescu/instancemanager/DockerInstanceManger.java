@@ -87,6 +87,10 @@ public class DockerInstanceManger implements InstanceManager {
 
   @Override
   public String getTargetHost(ServerInstance instance) {
+    if (System.getProperty("containerised") != null) {
+      return instance.getName();
+    }
+
     return "127.0.0.1";
   }
 
@@ -96,7 +100,7 @@ public class DockerInstanceManger implements InstanceManager {
 
   @SneakyThrows
   private void awaitHealthy(ServerInstance instance) {
-    log.info("Awaiting instance={} to be healthy", instance.getName());
+    log.info("Awaiting instance={} to be healthy by pinging={}", instance.getName(), getTargetHost(instance) + ":" + instance.getPrivatePort());
     try {
       while (!instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.HEALTHY)) {
         Thread.sleep(Constants.MILLIS_IN_SECONDS);

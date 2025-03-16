@@ -2,6 +2,7 @@ package org.acerbulescu.configurators;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Provider;
+import io.netty.util.internal.StringUtil;
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.config.ConfigRepresentation;
 import org.acerbulescu.models.ServerInstanceRepresentation;
@@ -18,18 +19,29 @@ public class ConfigConfigurator implements Provider<ConfigRepresentation> {
 
   @Override
   public ConfigRepresentation get() {
+    if (System.getProperty("containerised") != null) {
+      log.info("Application running inside a container. Behaviour will be adjusted accordingly.");
+    }
+
     var objectMapper = new ObjectMapper();
     var file = new File(CONFIG_FILE_PATH);
+    ConfigRepresentation config;
     try {
       if (!file.exists()) {
         log.info("Config file nof found. Creating default");
         return createDefaultFile(file, objectMapper);
       }
-      return objectMapper.readValue(file, ConfigRepresentation.class);
+      config = objectMapper.readValue(file, ConfigRepresentation.class);
     } catch (Exception e) {
       log.error("Error when reading config file: ", e);
       throw new RuntimeException("Failed to load configuration: " + CONFIG_FILE_PATH, e);
     }
+
+    if (StringUtil.isNullOrEmpty(config.getDockerNetwork()) && System.getProperty("containerised") != null) {
+      throw new RuntimeException("Network needs to be provided when running in a container and must be the same as host.");
+    }
+
+    return config;
   }
 
   private ConfigRepresentation createDefaultFile(File file, ObjectMapper mapper) {
@@ -43,6 +55,7 @@ public class ConfigConfigurator implements Provider<ConfigRepresentation> {
 
     var defaultConfig = ConfigRepresentation.builder()
         .instances(List.of(instanceRepresentation))
+        .dockerNetwork("mcdockerseer")
         .build();
 
     try {

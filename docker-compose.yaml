@@ -1,0 +1,15 @@
+services:
+  mcoverseer:
+    image: andreicerbulescu/mcdockerseer:latest
+    volumes:
+      - "./config:/app/config"
+      - "./servers:/servers"
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - mcdockerseer
+    ports:
+      - 25565:25565
+
+networks:
+  mcdockerseer:
+    external: true
