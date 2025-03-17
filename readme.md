@@ -16,7 +16,8 @@ This guide will use the default network name I specified in both docker-compose.
 2. Update `config.json` for your first server with the absolute path to it.
 3. Update `privatePort` and `publicPort` to your liking (private: the actual server's port; public: the port you will be
    connecting to)
-4. Run `docker compose up -d`
+4. Set `max-tick-time=-1` inside all servers' `server.properties` files.
+5. Run `docker compose up -d`
 
 ### Contributing
 
