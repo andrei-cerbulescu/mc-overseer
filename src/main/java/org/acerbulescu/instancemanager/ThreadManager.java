@@ -1,6 +1,5 @@
 package org.acerbulescu.instancemanager;
 
-import com.google.inject.Inject;
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.models.ServerInstance;
 import org.acerbulescu.models.ThreadInstance;
@@ -12,12 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Log4j2
+@Deprecated
 public class ThreadManager implements InstanceManager {
-
-  @Inject
   ReverseProxyFactory reverseProxyFactory;
 
-  @Inject
   ProcessManager processManager;
 
   List<ThreadInstance> instances = new ArrayList<>();

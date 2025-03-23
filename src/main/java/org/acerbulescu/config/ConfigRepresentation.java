@@ -1,19 +1,18 @@
 package org.acerbulescu.config;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.acerbulescu.models.ServerInstanceRepresentation;
 
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
+@Data
 @Getter
 @Builder
-@AllArgsConstructor
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class ConfigRepresentation {
   private List<ServerInstanceRepresentation> instances;
   private String dockerNetwork;

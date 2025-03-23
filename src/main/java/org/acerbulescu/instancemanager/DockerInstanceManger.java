@@ -1,23 +1,27 @@
 package org.acerbulescu.instancemanager;
 
-import com.google.inject.Inject;
-import lombok.SneakyThrows;
-import lombok.extern.log4j.Log4j2;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.PreDestroy;
+
 import org.acerbulescu.docker.DockerClient;
 import org.acerbulescu.models.DockerInstance;
 import org.acerbulescu.models.ServerInstance;
 import org.acerbulescu.reverseproxy.ReverseProxyFactory;
 import org.apache.logging.log4j.core.util.Constants;
+import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.log4j.Log4j2;
 
 @Log4j2
+@Component
+@AllArgsConstructor
 public class DockerInstanceManger implements InstanceManager {
-  @Inject
   ReverseProxyFactory reverseProxyFactory;
 
-  @Inject
   DockerClient dockerClient;
 
   List<DockerInstance> instances = new ArrayList<>();
@@ -31,6 +35,7 @@ public class DockerInstanceManger implements InstanceManager {
   }
 
   @Override
+  @PreDestroy
   public void shutdownAllInstances() {
     log.info("Shutting down all instances");
     instances.forEach(this::stopInstance);

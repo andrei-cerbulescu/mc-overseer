@@ -1,11 +1,12 @@
 package org.acerbulescu.configurators;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.inject.Provider;
 import io.netty.util.internal.StringUtil;
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.config.ConfigRepresentation;
 import org.acerbulescu.models.ServerInstanceRepresentation;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -13,12 +14,13 @@ import java.nio.file.Paths;
 import java.util.List;
 
 @Log4j2
-public class ConfigConfigurator implements Provider<ConfigRepresentation> {
+@Configuration
+public class ConfigConfigurator {
   private static final String CONFIG_PATH = "./config";
   private static final String CONFIG_FILE_PATH = CONFIG_PATH + "/config.json";
 
-  @Override
-  public ConfigRepresentation get() {
+  @Bean
+  public ConfigRepresentation configRepresentation() {
     if (System.getProperty("containerised") != null) {
       log.info("Application running inside a container. Behaviour will be adjusted accordingly.");
     }
@@ -33,7 +35,7 @@ public class ConfigConfigurator implements Provider<ConfigRepresentation> {
       }
       config = objectMapper.readValue(file, ConfigRepresentation.class);
     } catch (Exception e) {
-      log.error("Error when reading config file: ", e);
+      log.error("Error when reading config file={}", CONFIG_FILE_PATH, e);
       throw new RuntimeException("Failed to load configuration: " + CONFIG_FILE_PATH, e);
     }
 

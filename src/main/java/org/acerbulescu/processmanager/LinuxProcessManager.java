@@ -1,12 +1,15 @@
 package org.acerbulescu.processmanager;
 
+import lombok.AllArgsConstructor;
+import lombok.extern.log4j.Log4j2;
+import org.acerbulescu.models.ThreadInstance;
+import org.springframework.stereotype.Component;
+
 import java.io.IOException;
 
-import org.acerbulescu.models.ThreadInstance;
-
-import lombok.extern.log4j.Log4j2;
-
 @Log4j2
+@Component
+@AllArgsConstructor
 public class LinuxProcessManager implements ProcessManager {
   @Override
   public void suspendThread(ThreadInstance threadInstance) {

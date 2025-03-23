@@ -1,36 +1,42 @@
 package org.acerbulescu;
 
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.config.ConfigRepresentation;
 import org.acerbulescu.instancemanager.InstanceManager;
 import org.acerbulescu.mappers.ServerInstanceMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
+
+import lombok.extern.log4j.Log4j2;
 
 @Log4j2
-public class Main {
+@SpringBootApplication
+@ComponentScan(basePackages = "org.acerbulescu")
+public class Main implements CommandLineRunner {
+  private final ConfigRepresentation config;
+  private final InstanceManager instanceManager;
 
-  public static void main(String[] args) {
-    var main = new Main();
-
-    main.start();
+  @Autowired
+  public Main(ConfigRepresentation config, InstanceManager instanceManager) {
+    this.config = config;
+    this.instanceManager = instanceManager;
   }
 
-  public void start() {
-    Injector injector = Guice.createInjector(new AppModule());
 
-    var config = injector.getInstance(ConfigRepresentation.class);
-    var instanceManager = injector.getInstance(InstanceManager.class);
+  public static void main(String[] args) {
+    var context = SpringApplication.run(Main.class, args);
+    context.registerShutdownHook();
+  }
 
-    Runtime.getRuntime().addShutdownHook(new Thread(instanceManager::shutdownAllInstances, "shutdown-thread"));
+  @Override
+  public void run(String... args) {
 
-    config.getInstances().stream().map(ServerInstanceMapper.INSTANCE::from).forEach(instance -> {
-          new Thread(() -> {
-            instanceManager.startInstance(instance);
-          }).start();
-        }
-    );
-
-
+    config.getInstances().stream()
+        .map(ServerInstanceMapper.INSTANCE::from)
+        .forEach(
+            instance -> new Thread(() -> instanceManager.startInstance(instance), instance.getName() + "-MAIN-THREAD")
+                .start());
   }
 }
