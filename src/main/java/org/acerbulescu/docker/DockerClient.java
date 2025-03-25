@@ -1,25 +1,18 @@
 package org.acerbulescu.docker;
 
-import java.util.List;
-
+import com.github.dockerjava.api.command.CreateContainerResponse;
+import com.github.dockerjava.api.model.*;
+import com.github.dockerjava.core.DefaultDockerClientConfig;
+import com.github.dockerjava.core.DockerClientImpl;
+import com.github.dockerjava.netty.NettyDockerCmdExecFactory;
+import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.config.ConfigRepresentation;
 import org.acerbulescu.models.DockerInstance;
 import org.acerbulescu.models.ServerInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.github.dockerjava.api.command.CreateContainerResponse;
-import com.github.dockerjava.api.model.Bind;
-import com.github.dockerjava.api.model.ExposedPort;
-import com.github.dockerjava.api.model.HostConfig;
-import com.github.dockerjava.api.model.InternetProtocol;
-import com.github.dockerjava.api.model.Ports;
-import com.github.dockerjava.api.model.Volume;
-import com.github.dockerjava.core.DefaultDockerClientConfig;
-import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.netty.NettyDockerCmdExecFactory;
-
-import lombok.extern.log4j.Log4j2;
+import java.util.List;
 
 @Log4j2
 @Component
@@ -76,7 +69,7 @@ public class DockerClient {
     var volumeBinds = new Bind(instance.getPath(), new Volume(DockerClient.SERVER_PATH));
 
     var hostConfig = HostConfig.newHostConfig()
-        .withAutoRemove(true)
+        .withAutoRemove(Boolean.TRUE)
         .withBinds(volumeBinds)
         .withNetworkMode(config.getDockerNetwork());
 
@@ -85,7 +78,7 @@ public class DockerClient {
     if (System.getProperty("containerised") == null) {
       var portBindings = new Ports();
 
-      log.info("Creating port={} bindings for instance={}",instance.getPrivatePort(), instance.getName());
+      log.info("Creating port={} bindings for instance={}", instance.getPrivatePort(), instance.getName());
       portBindings.bind(ExposedPort.tcp(instance.getPrivatePort()), Ports.Binding.bindPort(instance.getPrivatePort()));
       portBindings.bind(ExposedPort.udp(instance.getPrivatePort()), Ports.Binding.bindPort(instance.getPrivatePort()));
 
@@ -104,10 +97,10 @@ public class DockerClient {
         .withHostConfig(hostConfig)
         .withExposedPorts(exposedPorts)
         .withCmd(instance.getStartCommand().split(" "))
-        .withAttachStdout(true)
-        .withAttachStderr(true)
-        .withAttachStdin(true)
-        .withTty(true)
+        .withAttachStdout(Boolean.TRUE)
+        .withAttachStderr(Boolean.TRUE)
+        .withAttachStdin(Boolean.TRUE)
+        .withTty(Boolean.TRUE)
         .exec();
   }
 }

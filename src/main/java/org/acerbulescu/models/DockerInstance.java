@@ -16,7 +16,9 @@ public class DockerInstance extends ServerInstance {
         s.getPublicPort(),
         s.getPrivatePort(),
         s.getPath(),
-        s.getStartCommand()
+        s.getStartCommand(),
+        s.getStatus(),
+        s.getHost()
     );
   }
 }

@@ -34,7 +34,7 @@ public class Main implements CommandLineRunner {
   public void run(String... args) {
 
     config.getInstances().stream()
-        .map(ServerInstanceMapper.INSTANCE::from)
+            .map(e -> (ServerInstanceMapper.INSTANCE.from(e, instanceManager.getTargetHost(e))))
         .forEach(
             instance -> new Thread(() -> instanceManager.startInstance(instance), instance.getName() + "-MAIN-THREAD")
                 .start());

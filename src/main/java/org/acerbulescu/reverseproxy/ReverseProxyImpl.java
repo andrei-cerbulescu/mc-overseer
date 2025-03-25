@@ -19,20 +19,22 @@ import java.util.UUID;
 public class ReverseProxyImpl implements ReverseProxy {
   InstanceManager instanceManager;
 
-  ServerInstance serverInstance;
+  String instanceName;
+  Integer publicPort;
+  Integer privatePort;
 
   @Override
   public void start() {
     try {
-      log.info("Creating reverse proxy for instance={} on port={}", serverInstance.getName(), serverInstance.getPublicPort());
-      var serverSocket = new ServerSocket(serverInstance.getPublicPort());
+      log.info("Creating reverse proxy for instance={} on port={}", instanceName, publicPort);
+      var serverSocket = new ServerSocket(publicPort);
       scheduleSuspend();
       while (true) {
         var clientSocket = serverSocket.accept();
-        new Thread(() -> handleClient(clientSocket), "SERVER-" + serverInstance.getName() + "-PROXY").start();
+        new Thread(() -> handleClient(clientSocket), "SERVER-" + instanceName + "-PROXY").start();
       }
     } catch (IOException e) {
-      log.error("Cannot create reverse proxy for instance={}", serverInstance.getName(), e);
+      log.error("Cannot create reverse proxy for instance={}", instanceName, e);
       throw new RuntimeException(e);
     }
   }
@@ -40,21 +42,21 @@ public class ReverseProxyImpl implements ReverseProxy {
   @SneakyThrows
   private void handleClient(Socket clientSocket) {
     var clientUuid = UUID.randomUUID().toString();
-    log.info("Client with uuid={} is connecting to instance={}", clientUuid, serverInstance.getName());
-    if (serverInstance.getStatus(instanceManager.getTargetHost(serverInstance)).equals(ServerInstance.Status.SUSPENDED)) {
-      instanceManager.resumeInstance(serverInstance);
+    log.info("Client with uuid={} is connecting to instance={}", clientUuid, instanceName);
+    if (instanceManager.getInstanceStatus(instanceName).equals(ServerInstance.Status.SUSPENDED)) {
+      instanceManager.resumeInstance(instanceName);
     }
 
-    var targetSocket = new Socket(instanceManager.getTargetHost(serverInstance), serverInstance.getPrivatePort());
+    var targetSocket = new Socket(instanceManager.getTargetHost(instanceName), privatePort);
     var clientInput = clientSocket.getInputStream();
     var clientOutput = clientSocket.getOutputStream();
     var targetInput = targetSocket.getInputStream();
     var targetOutput = targetSocket.getOutputStream();
 
-    serverInstance.incrementConnectedPlayers();
+    instanceManager.incrementConnectedPlayers(instanceName);
 
-    Thread forwardThread = new Thread(() -> forwardData(clientInput, targetOutput), "FORWARD-THREAD-" + serverInstance.getName() + "-" + UUID.randomUUID());
-    Thread backwardThread = new Thread(() -> forwardData(targetInput, clientOutput), "BACKWARD-THREAD-" + serverInstance.getName() + "-" + UUID.randomUUID());
+    Thread forwardThread = new Thread(() -> forwardData(clientInput, targetOutput), "FORWARD-THREAD-" + instanceName + "-" + UUID.randomUUID());
+    Thread backwardThread = new Thread(() -> forwardData(targetInput, clientOutput), "BACKWARD-THREAD-" + instanceName + "-" + UUID.randomUUID());
 
     forwardThread.start();
     backwardThread.start();
@@ -64,23 +66,23 @@ public class ReverseProxyImpl implements ReverseProxy {
     clientSocket.close();
     targetSocket.close();
 
-    serverInstance.decrementConnectedPlayers();
-    log.info("Client with uuid={} disconnected from instance={}", clientUuid, serverInstance.getName());
+    instanceManager.decrementConnectedPlayers(instanceName);
+    log.info("Client with uuid={} disconnected from instance={}", clientUuid, instanceName);
     scheduleSuspend();
   }
 
   private void scheduleSuspend() {
-    log.info("Scheduling instance={} for suspension", serverInstance.getName());
+    log.info("Scheduling instance={} for suspension", instanceName);
     try {
       Thread.sleep(10 * Constants.MILLIS_IN_SECONDS);
     } catch (InterruptedException e) {
-      log.info("Could not await instance={} for suspension. Proceeding immediately", serverInstance.getName());
+      log.info("Could not await instance={} for suspension. Proceeding immediately", instanceName);
     }
 
-    if (serverInstance.getConnectedPlayers().equals(0)) {
-      instanceManager.suspendInstance(serverInstance);
+    if (instanceManager.getConnectedPlayers(instanceName) == 0) {
+      instanceManager.suspendInstance(instanceName);
     } else {
-      log.info("Not suspending instance={} because it has active players", serverInstance.getName());
+      log.info("Not suspending instance={} because it has active players", instanceName);
     }
   }
 

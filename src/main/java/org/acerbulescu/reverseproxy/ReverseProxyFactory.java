@@ -10,7 +10,9 @@ public class ReverseProxyFactory {
   public ReverseProxy from(InstanceManager instanceManager, ServerInstance instance) {
     return ReverseProxyImpl.builder()
         .instanceManager(instanceManager)
-        .serverInstance(instance)
+        .instanceName(instance.getName())
+        .publicPort(instance.getPublicPort())
+        .privatePort(instance.getPrivatePort())
         .build();
   }
 }

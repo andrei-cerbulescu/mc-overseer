@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.util.internal.StringUtil;
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.config.ConfigRepresentation;
-import org.acerbulescu.models.ServerInstanceRepresentation;
+import org.acerbulescu.models.ServerInstanceConfigRepresentation;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -47,7 +47,7 @@ public class ConfigConfigurator {
   }
 
   private ConfigRepresentation createDefaultFile(File file, ObjectMapper mapper) {
-    var instanceRepresentation = ServerInstanceRepresentation.builder()
+    var instanceRepresentation = ServerInstanceConfigRepresentation.builder()
         .name("example")
         .publicPort(25566L)
         .privatePort(25565L)

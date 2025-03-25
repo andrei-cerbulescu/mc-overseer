@@ -2,6 +2,7 @@ package org.acerbulescu.instancemanager;
 
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.models.ServerInstance;
+import org.acerbulescu.models.ServerInstanceConfigRepresentation;
 import org.acerbulescu.models.ThreadInstance;
 import org.acerbulescu.processmanager.ProcessManager;
 import org.acerbulescu.reverseproxy.ReverseProxyFactory;
@@ -12,14 +13,14 @@ import java.util.List;
 
 @Log4j2
 @Deprecated
-public class ThreadManager implements InstanceManager {
+public class ThreadManager {
   ReverseProxyFactory reverseProxyFactory;
 
   ProcessManager processManager;
 
   List<ThreadInstance> instances = new ArrayList<>();
 
-  @Override
+
   public ThreadInstance getInstance(String name) {
     return instances.stream()
         .filter(e -> e.getName().equals(name))
@@ -27,12 +28,17 @@ public class ThreadManager implements InstanceManager {
         .orElseThrow(() -> new RuntimeException("Instance could not be found"));
   }
 
-  @Override
+
+  public List<ServerInstance> getInstances() {
+    return List.of();
+  }
+
+
   public void shutdownAllInstances() {
     instances.forEach(this::stopInstance);
   }
 
-  @Override
+
   public void startInstance(ServerInstance instance) {
     var threadInstance = new ThreadInstance(instance);
 
@@ -69,25 +75,25 @@ public class ThreadManager implements InstanceManager {
     }
   }
 
-  @Override
+
   public void suspendInstance(ServerInstance instance) {
-    if (!instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.SUSPENDED)) {
+    if (!instance.getStatus().equals(ServerInstance.Status.SUSPENDED)) {
       var threadInstance = getInstance(instance.getName());
       processManager.suspendThread(threadInstance);
       threadInstance.suspend();
     }
   }
 
-  @Override
+
   public void resumeInstance(ServerInstance instance) {
     var threadInstance = getInstance(instance.getName());
 
-    if (instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.SUSPENDED)) {
+    if (instance.getStatus().equals(ServerInstance.Status.SUSPENDED)) {
       processManager.resumeThread(threadInstance);
       instance.resume();
     }
     try {
-      while (!threadInstance.getStatus(getTargetHost(threadInstance)).equals(ServerInstance.Status.HEALTHY)) {
+      while (!threadInstance.getStatus().equals(ServerInstance.Status.HEALTHY)) {
         Thread.sleep(1000);
       }
     } catch (InterruptedException e) {
@@ -95,7 +101,7 @@ public class ThreadManager implements InstanceManager {
     }
   }
 
-  @Override
+
   public void stopInstance(ServerInstance instance) {
     var threadInstance = getInstance(instance.getName());
     resumeInstance(instance);
@@ -109,19 +115,24 @@ public class ThreadManager implements InstanceManager {
     }
   }
 
-  @Override
+
   public String getTargetHost(ServerInstance instance) {
     return "127.0.0.1";
   }
 
+
+  public String getTargetHost(ServerInstanceConfigRepresentation instance) {
+    return "127.0.0.1";
+  }
+
   private void startReverseProxy(ServerInstance instance) {
-    new Thread(() -> reverseProxyFactory.from(this, instance).start(), "SERVER-" + instance.getName() + "-PROXY-MANAGER").start();
+    // new Thread(() -> reverseProxyFactory.from(this, instance).start(), "SERVER-" + instance.getName() + "-PROXY-MANAGER").start();
   }
 
   private void awaitHealthy(ServerInstance instance) {
     log.info("Awaiting instance={} to be healthy", instance.getName());
     try {
-      while (!instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.HEALTHY)) {
+      while (!instance.getStatus().equals(ServerInstance.Status.HEALTHY)) {
         Thread.sleep(1000);
       }
     } catch (Exception e) {

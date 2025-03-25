@@ -1,10 +1,14 @@
 package org.acerbulescu.models;
 
-import lombok.*;
-import me.dilley.MineStat;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import me.dilley.MineStat;
 
 @Getter
 @Setter
@@ -17,11 +21,9 @@ public class ServerInstance {
   private Integer privatePort;
   private String path;
   private String startCommand;
+  private Status status;
+  private String host;
 
-  @Getter(AccessLevel.PROTECTED)
-  @Setter(AccessLevel.NONE)
-  private final AtomicBoolean isSuspended = new AtomicBoolean(false);
-  @Getter(AccessLevel.PROTECTED)
   @Setter(AccessLevel.NONE)
   private final AtomicInteger connectedPlayers = new AtomicInteger(0);
 
@@ -35,23 +37,23 @@ public class ServerInstance {
   }
 
   public void suspend() {
-    isSuspended.set(true);
+    status = Status.SUSPENDED;
   }
 
   public void resume() {
-    isSuspended.set(false);
+    status = new MineStat(host, privatePort, 1).isServerUp() ? Status.HEALTHY : Status.UNHEALTHY;
   }
 
-  public Status getStatus(String host) {
-    if (isSuspended.get()) {
+  public Status getStatus() {
+    if (status == null) {
+      status = Status.UNHEALTHY;
+    }
+    
+    if (status.equals(Status.SUSPENDED)) {
       return Status.SUSPENDED;
     }
 
-    if (new MineStat(host, privatePort, 1).isServerUp()) {
-      return Status.HEALTHY;
-    } else {
-      return Status.UNHEALTHY;
-    }
+    return new MineStat(host, privatePort, 1).isServerUp() ? Status.HEALTHY : Status.UNHEALTHY;
   }
 
   public void incrementConnectedPlayers() {
@@ -62,7 +64,7 @@ public class ServerInstance {
     connectedPlayers.decrementAndGet();
   }
 
-  public Integer getConnectedPlayers() {
+  public int getConnectedPlayers() {
     return connectedPlayers.get();
   }
 

@@ -1,16 +1,21 @@
 package org.acerbulescu.models;
 
-import lombok.*;
+import org.acerbulescu.models.ServerInstance.Status;
 
-@Getter
-@Setter
-@Builder
-@AllArgsConstructor
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ServerInstanceRepresentation {
   private String name;
-  private Long publicPort;
-  private Long privatePort;
+  private Integer publicPort;
+  private Integer privatePort;
   private String path;
   private String startCommand;
+  private Status status;
+  private Integer connectedPlayers;
 }

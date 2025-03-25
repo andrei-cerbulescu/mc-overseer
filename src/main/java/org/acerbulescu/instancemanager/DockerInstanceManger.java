@@ -1,20 +1,21 @@
 package org.acerbulescu.instancemanager;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.annotation.PreDestroy;
-
+import lombok.AllArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.docker.DockerClient;
 import org.acerbulescu.models.DockerInstance;
 import org.acerbulescu.models.ServerInstance;
+import org.acerbulescu.models.ServerInstanceConfigRepresentation;
 import org.acerbulescu.reverseproxy.ReverseProxyFactory;
 import org.apache.logging.log4j.core.util.Constants;
 import org.springframework.stereotype.Component;
 
-import lombok.AllArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.log4j.Log4j2;
+import javax.annotation.PreDestroy;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Log4j2
 @Component
@@ -24,7 +25,7 @@ public class DockerInstanceManger implements InstanceManager {
 
   DockerClient dockerClient;
 
-  List<DockerInstance> instances = new ArrayList<>();
+  List<DockerInstance> instances = Collections.synchronizedList(new ArrayList<>());
 
   @Override
   public DockerInstance getInstance(String name) {
@@ -35,10 +36,17 @@ public class DockerInstanceManger implements InstanceManager {
   }
 
   @Override
+  public List<ServerInstance> getInstances() {
+    return instances.stream()
+        .map(e -> (ServerInstance) e)
+        .collect(Collectors.toList());
+  }
+
+  @Override
   @PreDestroy
   public void shutdownAllInstances() {
     log.info("Shutting down all instances");
-    instances.forEach(this::stopInstance);
+    instances.forEach(e -> stopInstance(e.getName()));
   }
 
   @Override
@@ -65,8 +73,9 @@ public class DockerInstanceManger implements InstanceManager {
   }
 
   @Override
-  public void suspendInstance(ServerInstance instance) {
-    if (instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.SUSPENDED)) {
+  public void suspendInstance(String instanceName) {
+    var instance = getInstance(instanceName);
+    if (instance.getStatus().equals(ServerInstance.Status.SUSPENDED)) {
       log.info("Not suspending instance={} because it is already suspended", instance.getName());
     } else {
       dockerClient.pauseContainer(instance);
@@ -75,8 +84,9 @@ public class DockerInstanceManger implements InstanceManager {
   }
 
   @Override
-  public void resumeInstance(ServerInstance instance) {
-    if (instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.SUSPENDED)) {
+  public void resumeInstance(String instanceName) {
+    var instance = getInstance(instanceName);
+    if (instance.getStatus().equals(ServerInstance.Status.SUSPENDED)) {
       dockerClient.unpauseContainer(instance);
       instance.resume();
     } else {
@@ -85,13 +95,43 @@ public class DockerInstanceManger implements InstanceManager {
   }
 
   @Override
-  public void stopInstance(ServerInstance instance) {
-    var dockerInstance = getInstance(instance.getName());
+  public void stopInstance(String instanceName) {
+    var dockerInstance = getInstance(instanceName);
     dockerClient.stopInstance(dockerInstance);
   }
 
   @Override
-  public String getTargetHost(ServerInstance instance) {
+  public void incrementConnectedPlayers(String instanceName) {
+    getInstance(instanceName).incrementConnectedPlayers();
+  }
+
+  @Override
+  public void decrementConnectedPlayers(String instanceName) {
+    getInstance(instanceName).decrementConnectedPlayers();
+  }
+
+  @Override
+  public Integer getConnectedPlayers(String instanceName) {
+    return getInstance(instanceName).getConnectedPlayers();
+  }
+
+  @Override
+  public ServerInstance.Status getInstanceStatus(String instanceName) {
+    return getInstance(instanceName).getStatus();
+  }
+
+  @Override
+  public String getTargetHost(String instanceName) {
+    var instance = getInstance(instanceName);
+    if (System.getProperty("containerised") != null) {
+      return instance.getName();
+    }
+
+    return "127.0.0.1";
+  }
+
+  @Override
+  public String getTargetHost(ServerInstanceConfigRepresentation instance) {
     if (System.getProperty("containerised") != null) {
       return instance.getName();
     }
@@ -105,9 +145,9 @@ public class DockerInstanceManger implements InstanceManager {
 
   @SneakyThrows
   private void awaitHealthy(ServerInstance instance) {
-    log.info("Awaiting instance={} to be healthy by pinging={}", instance.getName(), getTargetHost(instance) + ":" + instance.getPrivatePort());
+    log.info("Awaiting instance={} to be healthy by pinging={}", instance.getName(), getTargetHost(instance.getName()) + ":" + instance.getPrivatePort());
     try {
-      while (!instance.getStatus(getTargetHost(instance)).equals(ServerInstance.Status.HEALTHY)) {
+      while (!instance.getStatus().equals(ServerInstance.Status.HEALTHY)) {
         Thread.sleep(Constants.MILLIS_IN_SECONDS);
       }
     } catch (Exception e) {
