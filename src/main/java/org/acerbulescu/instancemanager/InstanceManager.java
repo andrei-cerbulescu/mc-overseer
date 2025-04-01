@@ -14,17 +14,13 @@ public interface InstanceManager {
 
   void startInstance(ServerInstance instance);
 
-  void suspendInstance(String instanceName);
+  void startExistingInstance(String instanceName);
 
   void resumeInstance(String instanceName);
 
   void stopInstance(String instanceName);
 
-  void incrementConnectedPlayers(String instanceName);
-
-  void decrementConnectedPlayers(String instanceName);
-
-  Integer getConnectedPlayers(String instanceName);
+  void attemptSuspend(String instanceName);
 
   ServerInstance.Status getInstanceStatus(String instanceName);
 

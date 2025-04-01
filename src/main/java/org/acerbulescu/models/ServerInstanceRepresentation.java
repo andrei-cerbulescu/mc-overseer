@@ -1,11 +1,9 @@
 package org.acerbulescu.models;
 
-import org.acerbulescu.models.ServerInstance.Status;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.acerbulescu.models.ServerInstance.Status;
 
 @Data
 @NoArgsConstructor
@@ -17,5 +15,4 @@ public class ServerInstanceRepresentation {
   private String path;
   private String startCommand;
   private Status status;
-  private Integer connectedPlayers;
 }

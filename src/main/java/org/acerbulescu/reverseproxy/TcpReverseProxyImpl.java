@@ -1,9 +1,8 @@
 package org.acerbulescu.reverseproxy;
 
-import lombok.Builder;
 import lombok.SneakyThrows;
+import lombok.experimental.SuperBuilder;
 import lombok.extern.log4j.Log4j2;
-import org.acerbulescu.instancemanager.InstanceManager;
 import org.acerbulescu.models.ServerInstance;
 import org.apache.logging.log4j.core.util.Constants;
 
@@ -13,30 +12,47 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Builder
 @Log4j2
-public class ReverseProxyImpl implements ReverseProxy {
-  InstanceManager instanceManager;
+@SuperBuilder
+public class TcpReverseProxyImpl extends ReverseProxy {
 
-  String instanceName;
-  Integer publicPort;
-  Integer privatePort;
+  ServerSocket serverSocket;
+  AtomicInteger connectedPlayers;
 
   @Override
   public void start() {
     try {
-      log.info("Creating reverse proxy for instance={} on port={}", instanceName, publicPort);
-      var serverSocket = new ServerSocket(publicPort);
+      log.info("Creating TCP proxy for instance={} on publicPort={} forwarding to privatePort={}", instanceName, publicPort, privatePort);
+      serverSocket = new ServerSocket(publicPort);
       scheduleSuspend();
-      while (true) {
+      while (!serverSocket.isClosed()) {
         var clientSocket = serverSocket.accept();
         new Thread(() -> handleClient(clientSocket), "SERVER-" + instanceName + "-PROXY").start();
       }
+      log.info("Reverse proxy for instance={} on port={} has been closed", instanceName, publicPort);
     } catch (IOException e) {
       log.error("Cannot create reverse proxy for instance={}", instanceName, e);
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public void stop() {
+    try {
+      if (serverSocket != null && !serverSocket.isClosed()) {
+        serverSocket.close();
+        log.info("Reverse proxy closed for instance={}", instanceName);
+      }
+    } catch (IOException e) {
+      log.error("Error closing server socket for instance={}", instanceName, e);
+    }
+  }
+
+  @Override
+  public Status getStatus() {
+    return connectedPlayers.get() == 0 ? Status.IDLE : Status.BUSY;
   }
 
   @SneakyThrows
@@ -53,7 +69,7 @@ public class ReverseProxyImpl implements ReverseProxy {
     var targetInput = targetSocket.getInputStream();
     var targetOutput = targetSocket.getOutputStream();
 
-    instanceManager.incrementConnectedPlayers(instanceName);
+    connectedPlayers.incrementAndGet();
 
     Thread forwardThread = new Thread(() -> forwardData(clientInput, targetOutput), "FORWARD-THREAD-" + instanceName + "-" + UUID.randomUUID());
     Thread backwardThread = new Thread(() -> forwardData(targetInput, clientOutput), "BACKWARD-THREAD-" + instanceName + "-" + UUID.randomUUID());
@@ -66,7 +82,7 @@ public class ReverseProxyImpl implements ReverseProxy {
     clientSocket.close();
     targetSocket.close();
 
-    instanceManager.decrementConnectedPlayers(instanceName);
+    connectedPlayers.decrementAndGet();
     log.info("Client with uuid={} disconnected from instance={}", clientUuid, instanceName);
     scheduleSuspend();
   }
@@ -79,14 +95,14 @@ public class ReverseProxyImpl implements ReverseProxy {
       log.info("Could not await instance={} for suspension. Proceeding immediately", instanceName);
     }
 
-    if (instanceManager.getConnectedPlayers(instanceName) == 0) {
-      instanceManager.suspendInstance(instanceName);
+    if (connectedPlayers.get() == 0) {
+      instanceManager.attemptSuspend(instanceName);
     } else {
       log.info("Not suspending instance={} because it has active players", instanceName);
     }
   }
 
-  private static void forwardData(InputStream input, OutputStream output) {
+  private void forwardData(InputStream input, OutputStream output) {
     try {
       byte[] buffer = new byte[4096];
       int bytesRead;

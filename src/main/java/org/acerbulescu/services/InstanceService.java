@@ -26,4 +26,12 @@ public class InstanceService {
         .map(ServerInstanceMapper.INSTANCE::from)
         .collect(Collectors.toList());
   }
+
+  public void stopInstance(String name) {
+    instanceManager.stopInstance(name);
+  }
+
+  public void restartExistingInstance(String name) {
+    instanceManager.startExistingInstance(name);
+  }
 }

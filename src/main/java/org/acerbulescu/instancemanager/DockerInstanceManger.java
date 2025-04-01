@@ -7,6 +7,7 @@ import org.acerbulescu.docker.DockerClient;
 import org.acerbulescu.models.DockerInstance;
 import org.acerbulescu.models.ServerInstance;
 import org.acerbulescu.models.ServerInstanceConfigRepresentation;
+import org.acerbulescu.reverseproxy.ReverseProxy;
 import org.acerbulescu.reverseproxy.ReverseProxyFactory;
 import org.apache.logging.log4j.core.util.Constants;
 import org.springframework.stereotype.Component;
@@ -54,8 +55,20 @@ public class DockerInstanceManger implements InstanceManager {
   public void startInstance(ServerInstance instance) {
     var containerInstance = createContainer(instance);
 
-    instances.add(containerInstance);
+    awaitHealthy(containerInstance);
 
+    instances.add(containerInstance);
+    startReverseProxy(containerInstance);
+  }
+
+  @Override
+  public void startExistingInstance(String instanceName) {
+    var instance = getInstance(instanceName);
+    if (instance.getStatus().equals(ServerInstance.Status.SHUTDOWN)) {
+      instance.start();
+    }
+
+    createContainer(instance);
     awaitHealthy(instance);
 
     startReverseProxy(instance);
@@ -72,8 +85,7 @@ public class DockerInstanceManger implements InstanceManager {
     return containerInstance;
   }
 
-  @Override
-  public void suspendInstance(String instanceName) {
+  private void suspendInstance(String instanceName) {
     var instance = getInstance(instanceName);
     if (instance.getStatus().equals(ServerInstance.Status.SUSPENDED)) {
       log.info("Not suspending instance={} because it is already suspended", instance.getName());
@@ -97,22 +109,27 @@ public class DockerInstanceManger implements InstanceManager {
   @Override
   public void stopInstance(String instanceName) {
     var dockerInstance = getInstance(instanceName);
+    var reverseProxies = dockerInstance.getReverseProxies();
+    reverseProxies.forEach(e -> {
+      if (e != null) {
+        e.stop();
+      }
+    });
+
+    dockerInstance.setReverseProxies(List.of());
+
     dockerClient.stopInstance(dockerInstance);
+    dockerInstance.stop();
   }
 
   @Override
-  public void incrementConnectedPlayers(String instanceName) {
-    getInstance(instanceName).incrementConnectedPlayers();
-  }
+  public void attemptSuspend(String instanceName) {
+    var instance = getInstance(instanceName);
+    var allIdle = instance.getReverseProxies().stream().map(ReverseProxy::getStatus).allMatch(e -> e.equals(ReverseProxy.Status.IDLE));
 
-  @Override
-  public void decrementConnectedPlayers(String instanceName) {
-    getInstance(instanceName).decrementConnectedPlayers();
-  }
-
-  @Override
-  public Integer getConnectedPlayers(String instanceName) {
-    return getInstance(instanceName).getConnectedPlayers();
+    if (allIdle) {
+      suspendInstance(instanceName);
+    }
   }
 
   @Override
@@ -140,7 +157,10 @@ public class DockerInstanceManger implements InstanceManager {
   }
 
   private void startReverseProxy(ServerInstance instance) {
-    new Thread(() -> reverseProxyFactory.from(this, instance).start(), "SERVER-" + instance.getName() + "-PROXY-MANAGER").start();
+    var reverseProxy = reverseProxyFactory.from(this, instance, ReverseProxyFactory.Protocol.TCP);
+    instance.getReverseProxies().add(reverseProxy);
+
+    new Thread(reverseProxy::start, "SERVER-" + instance.getName() + "-PROXY-MANAGER").start();
   }
 
   @SneakyThrows
@@ -153,7 +173,7 @@ public class DockerInstanceManger implements InstanceManager {
     } catch (Exception e) {
       e.printStackTrace();
     }
-    log.info("Instance is healthy: " + instance.getName());
+    log.info("Instance={} is healthy", instance.getName());
   }
 
 }

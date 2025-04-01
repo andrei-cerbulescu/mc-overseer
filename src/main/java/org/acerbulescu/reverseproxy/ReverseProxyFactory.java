@@ -7,8 +7,27 @@ import org.springframework.stereotype.Component;
 @Component
 public class ReverseProxyFactory {
 
-  public ReverseProxy from(InstanceManager instanceManager, ServerInstance instance) {
-    return ReverseProxyImpl.builder()
+  public enum Protocol {TCP, UDP}
+
+  public ReverseProxy from(InstanceManager instanceManager, ServerInstance instance, Protocol protocol) {
+    if (protocol.equals(Protocol.TCP)) {
+      return tcpFrom(instance, instanceManager);
+    }
+
+    return udpFrom(instance, instanceManager);
+  }
+
+  private ReverseProxy tcpFrom(ServerInstance instance, InstanceManager instanceManager) {
+    return TcpReverseProxyImpl.builder()
+        .instanceManager(instanceManager)
+        .instanceName(instance.getName())
+        .publicPort(instance.getPublicPort())
+        .privatePort(instance.getPrivatePort())
+        .build();
+  }
+
+  private ReverseProxy udpFrom(ServerInstance instance, InstanceManager instanceManager) {
+    return UdpReverseProxyImpl.builder()
         .instanceManager(instanceManager)
         .instanceName(instance.getName())
         .publicPort(instance.getPublicPort())

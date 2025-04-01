@@ -1,14 +1,10 @@
 package org.acerbulescu.models;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import me.dilley.MineStat;
+import org.acerbulescu.reverseproxy.ReverseProxy;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -24,23 +20,39 @@ public class ServerInstance {
   private Status status;
   private String host;
 
-  @Setter(AccessLevel.NONE)
-  private final AtomicInteger connectedPlayers = new AtomicInteger(0);
+  private List<ReverseProxy> reverseProxies;
 
   public enum Status {
     SUSPENDED("SUSPENDED"),
     HEALTHY("HEALTHY"),
-    UNHEALTHY("UNHEALTHY");
+    UNHEALTHY("UNHEALTHY"),
+    SHUTDOWN("SHUTDOWN");
 
     Status(final String text) {
     }
   }
 
+  public void stop() {
+    status = Status.SHUTDOWN;
+  }
+
+  public void start() {
+    status = Status.UNHEALTHY;
+  }
+
   public void suspend() {
+    if (status.equals(Status.SHUTDOWN)) {
+      return;
+    }
+
     status = Status.SUSPENDED;
   }
 
   public void resume() {
+    if (status.equals(Status.SHUTDOWN)) {
+      return;
+    }
+
     status = new MineStat(host, privatePort, 1).isServerUp() ? Status.HEALTHY : Status.UNHEALTHY;
   }
 
@@ -48,24 +60,16 @@ public class ServerInstance {
     if (status == null) {
       status = Status.UNHEALTHY;
     }
-    
+
     if (status.equals(Status.SUSPENDED)) {
       return Status.SUSPENDED;
     }
 
+    if (status.equals(Status.SHUTDOWN)) {
+      return Status.SHUTDOWN;
+    }
+
     return new MineStat(host, privatePort, 1).isServerUp() ? Status.HEALTHY : Status.UNHEALTHY;
-  }
-
-  public void incrementConnectedPlayers() {
-    connectedPlayers.incrementAndGet();
-  }
-
-  public void decrementConnectedPlayers() {
-    connectedPlayers.decrementAndGet();
-  }
-
-  public int getConnectedPlayers() {
-    return connectedPlayers.get();
   }
 
 }
