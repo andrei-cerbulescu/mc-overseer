@@ -19,7 +19,7 @@ public class DockerInstance extends ServerInstance {
         s.getStartCommand(),
         s.getStatus(),
         s.getHost(),
-        s.getReverseProxies()
+        s.getPorts()
     );
   }
 }

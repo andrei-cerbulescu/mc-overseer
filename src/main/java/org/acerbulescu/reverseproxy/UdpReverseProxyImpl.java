@@ -58,7 +58,7 @@ public class UdpReverseProxyImpl extends ReverseProxy {
         lastRequest = Instant.now();
       }
     } catch (IOException e) {
-      log.error("UDP proxy for instance={} ran into an error: ", instanceName, e);
+      log.error("UDP proxy for instance={} ran into an error", instanceName, e);
       throw new RuntimeException(e);
     } finally {
       if (socket != null && !socket.isClosed()) {

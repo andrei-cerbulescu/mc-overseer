@@ -1,11 +1,5 @@
 package org.acerbulescu.reverseproxy;
 
-import lombok.SneakyThrows;
-import lombok.experimental.SuperBuilder;
-import lombok.extern.log4j.Log4j2;
-import org.acerbulescu.models.ServerInstance;
-import org.apache.logging.log4j.core.util.Constants;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,12 +8,18 @@ import java.net.Socket;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.acerbulescu.models.ServerInstance;
+
+import lombok.SneakyThrows;
+import lombok.experimental.SuperBuilder;
+import lombok.extern.log4j.Log4j2;
+
 @Log4j2
 @SuperBuilder
 public class TcpReverseProxyImpl extends ReverseProxy {
-
   ServerSocket serverSocket;
-  AtomicInteger connectedPlayers;
+
+  private final AtomicInteger connectedPlayers = new AtomicInteger(0);
 
   @Override
   public void start() {
@@ -52,6 +52,7 @@ public class TcpReverseProxyImpl extends ReverseProxy {
 
   @Override
   public Status getStatus() {
+
     return connectedPlayers.get() == 0 ? Status.IDLE : Status.BUSY;
   }
 
@@ -85,21 +86,6 @@ public class TcpReverseProxyImpl extends ReverseProxy {
     connectedPlayers.decrementAndGet();
     log.info("Client with uuid={} disconnected from instance={}", clientUuid, instanceName);
     scheduleSuspend();
-  }
-
-  private void scheduleSuspend() {
-    log.info("Scheduling instance={} for suspension", instanceName);
-    try {
-      Thread.sleep(10 * Constants.MILLIS_IN_SECONDS);
-    } catch (InterruptedException e) {
-      log.info("Could not await instance={} for suspension. Proceeding immediately", instanceName);
-    }
-
-    if (connectedPlayers.get() == 0) {
-      instanceManager.attemptSuspend(instanceName);
-    } else {
-      log.info("Not suspending instance={} because it has active players", instanceName);
-    }
   }
 
   private void forwardData(InputStream input, OutputStream output) {

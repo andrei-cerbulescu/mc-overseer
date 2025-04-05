@@ -4,6 +4,7 @@ import lombok.*;
 import me.dilley.MineStat;
 import org.acerbulescu.reverseproxy.ReverseProxy;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -19,8 +20,10 @@ public class ServerInstance {
   private String startCommand;
   private Status status;
   private String host;
+  private List<ServerInstanceConfigRepresentation.Ports> ports;
 
-  private List<ReverseProxy> reverseProxies;
+  @Setter(AccessLevel.NONE)
+  private final List<ReverseProxy> reverseProxies = new ArrayList<>();
 
   public enum Status {
     SUSPENDED("SUSPENDED"),

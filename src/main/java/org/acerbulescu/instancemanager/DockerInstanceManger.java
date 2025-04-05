@@ -55,9 +55,10 @@ public class DockerInstanceManger implements InstanceManager {
   public void startInstance(ServerInstance instance) {
     var containerInstance = createContainer(instance);
 
+    instances.add(containerInstance);
+
     awaitHealthy(containerInstance);
 
-    instances.add(containerInstance);
     startReverseProxy(containerInstance);
   }
 
@@ -116,7 +117,7 @@ public class DockerInstanceManger implements InstanceManager {
       }
     });
 
-    dockerInstance.setReverseProxies(List.of());
+    dockerInstance.getReverseProxies().clear();
 
     dockerClient.stopInstance(dockerInstance);
     dockerInstance.stop();
@@ -125,9 +126,12 @@ public class DockerInstanceManger implements InstanceManager {
   @Override
   public void attemptSuspend(String instanceName) {
     var instance = getInstance(instanceName);
-    var allIdle = instance.getReverseProxies().stream().map(ReverseProxy::getStatus).allMatch(e -> e.equals(ReverseProxy.Status.IDLE));
+    var allIdle = instance.getReverseProxies().stream()
+        .map(ReverseProxy::getStatus)
+        .allMatch(e -> e.equals(ReverseProxy.Status.IDLE));
 
     if (allIdle) {
+      log.info("Suspending instance={}", instance.getName());
       suspendInstance(instanceName);
     }
   }

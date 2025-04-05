@@ -1,17 +1,20 @@
 package org.acerbulescu.configurators;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.netty.util.internal.StringUtil;
-import lombok.extern.log4j.Log4j2;
-import org.acerbulescu.config.ConfigRepresentation;
-import org.acerbulescu.models.ServerInstanceConfigRepresentation;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+
+import org.acerbulescu.config.ConfigRepresentation;
+import org.acerbulescu.models.ServerInstanceConfigRepresentation;
+import org.acerbulescu.reverseproxy.ReverseProxyFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.netty.util.internal.StringUtil;
+import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 @Configuration
@@ -53,6 +56,15 @@ public class ConfigConfigurator {
         .privatePort(25565L)
         .path("./servers/example")
         .startCommand("java -Xmx1024M -Xms1024M -jar server.jar nogui")
+        .ports(
+            List.of(
+                ServerInstanceConfigRepresentation.Ports.builder()
+                    .protocol(ReverseProxyFactory.Protocol.TCP)
+                    .privatePort(8888)
+                    .publicPort(9999)
+                    .build()
+            )
+        )
         .build();
 
     var defaultConfig = ConfigRepresentation.builder()
@@ -63,9 +75,9 @@ public class ConfigConfigurator {
     try {
       Files.createDirectories(Paths.get(CONFIG_PATH));
       mapper.writerWithDefaultPrettyPrinter().writeValue(file, defaultConfig);
-      log.info("Default config created at: " + file.getAbsolutePath());
+      log.info("Default config created at={}", file.getAbsolutePath());
     } catch (Exception e) {
-      log.error("Failed to create default config: " + e.getMessage());
+      log.error("Failed to create default config", e);
       throw new RuntimeException("Default config could not be created. Exiting...");
     }
 

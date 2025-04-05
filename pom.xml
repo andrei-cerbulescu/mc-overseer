@@ -26,7 +26,7 @@
     <dependency>
       <groupId>com.github.docker-java</groupId>
       <artifactId>docker-java</artifactId>
-      <version>3.3.0</version>
+      <version>3.5.0</version>
     </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
@@ -59,11 +59,6 @@
       <artifactId>mapstruct-processor</artifactId>
       <version>1.5.5.Final</version>
       <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.github.docker-java</groupId>
-      <artifactId>docker-java</artifactId>
-      <version>3.3.4</version>
     </dependency>
     <dependency>
       <groupId>io.github.fragland</groupId>
@@ -99,6 +94,17 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-context</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-websocket</artifactId>
+      <version>${spring.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-messaging</artifactId>
       <version>${spring.version}</version>
     </dependency>
   </dependencies>

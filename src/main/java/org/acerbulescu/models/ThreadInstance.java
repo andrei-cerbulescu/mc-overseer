@@ -29,7 +29,7 @@ public class ThreadInstance extends ServerInstance {
         s.getStartCommand(),
         s.getStatus(),
         s.getHost(),
-        s.getReverseProxies()
+        s.getPorts()
     );
   }
 }

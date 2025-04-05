@@ -1,5 +1,6 @@
 package org.acerbulescu.reverseproxy;
 
+import lombok.AllArgsConstructor;
 import org.acerbulescu.instancemanager.InstanceManager;
 import org.acerbulescu.models.ServerInstance;
 import org.springframework.stereotype.Component;
@@ -7,7 +8,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ReverseProxyFactory {
 
-  public enum Protocol {TCP, UDP}
+  @AllArgsConstructor
+  public enum Protocol {
+    TCP("TCP"), UDP("UDP");
+    final String value;
+  }
 
   public ReverseProxy from(InstanceManager instanceManager, ServerInstance instance, Protocol protocol) {
     if (protocol.equals(Protocol.TCP)) {
