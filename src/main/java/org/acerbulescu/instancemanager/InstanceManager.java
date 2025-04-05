@@ -27,4 +27,8 @@ public interface InstanceManager {
   String getTargetHost(String instanceName);
 
   String getTargetHost(ServerInstanceConfigRepresentation instance);
+
+  void incrementStaticConnections(String instanceName);
+
+  void decrementStaticConnections(String instanceName);
 }

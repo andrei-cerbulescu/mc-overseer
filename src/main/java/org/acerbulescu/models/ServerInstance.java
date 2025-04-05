@@ -6,6 +6,7 @@ import org.acerbulescu.reverseproxy.ReverseProxy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Getter
 @Setter
@@ -24,6 +25,8 @@ public class ServerInstance {
 
   @Setter(AccessLevel.NONE)
   private final List<ReverseProxy> reverseProxies = new ArrayList<>();
+  @Setter(AccessLevel.NONE)
+  private final AtomicInteger staticConnectionsCounter = new AtomicInteger(0);
 
   public enum Status {
     SUSPENDED("SUSPENDED"),

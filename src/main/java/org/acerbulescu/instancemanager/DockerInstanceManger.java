@@ -126,14 +126,23 @@ public class DockerInstanceManger implements InstanceManager {
   @Override
   public void attemptSuspend(String instanceName) {
     var instance = getInstance(instanceName);
+
+    if (instance.getStaticConnectionsCounter().get() != 0) {
+      log.info("Not suspending instance={} due to existing static connections", instance.getName());
+      return;
+    }
+
     var allIdle = instance.getReverseProxies().stream()
         .map(ReverseProxy::getStatus)
         .allMatch(e -> e.equals(ReverseProxy.Status.IDLE));
 
-    if (allIdle) {
-      log.info("Suspending instance={}", instance.getName());
-      suspendInstance(instanceName);
+    if (!allIdle) {
+      log.info("Not suspending instance={} due to existing proxy connections", instance.getName());
+      return;
     }
+
+    log.info("Suspending instance={}", instance.getName());
+    suspendInstance(instanceName);
   }
 
   @Override
@@ -160,6 +169,27 @@ public class DockerInstanceManger implements InstanceManager {
     return "127.0.0.1";
   }
 
+  @Override
+  public void incrementStaticConnections(String instanceName) {
+    var instance = getInstance(instanceName);
+    if (instance.getStatus().equals(ServerInstance.Status.SUSPENDED)) {
+      resumeInstance(instanceName);
+    }
+
+    if (instance.getStatus().equals(ServerInstance.Status.SHUTDOWN)) {
+      log.error("Instance is shutdown. Cannot increment static connections");
+      throw new RuntimeException("Instance is shutdown. Cannot increment static connections");
+    }
+
+    getInstance(instanceName).getStaticConnectionsCounter().incrementAndGet();
+  }
+
+  @Override
+  public void decrementStaticConnections(String instanceName) {
+    getInstance(instanceName).getStaticConnectionsCounter().decrementAndGet();
+    attemptSuspend(instanceName);
+  }
+
   private void startReverseProxy(ServerInstance instance) {
     var reverseProxy = reverseProxyFactory.from(this, instance, ReverseProxyFactory.Protocol.TCP);
     instance.getReverseProxies().add(reverseProxy);
@@ -175,7 +205,7 @@ public class DockerInstanceManger implements InstanceManager {
         Thread.sleep(Constants.MILLIS_IN_SECONDS);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error("Could not await healthy for instance={}", instance.getName(), e);
     }
     log.info("Instance={} is healthy", instance.getName());
   }
