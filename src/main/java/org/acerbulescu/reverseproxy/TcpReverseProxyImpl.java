@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.acerbulescu.models.ServerInstance;
 
-import lombok.SneakyThrows;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.log4j.Log4j2;
 
@@ -56,32 +55,39 @@ public class TcpReverseProxyImpl extends ReverseProxy {
     return connectedPlayers.get() == 0 ? Status.IDLE : Status.BUSY;
   }
 
-  @SneakyThrows
   private void handleClient(Socket clientSocket) {
     var clientUuid = UUID.randomUUID().toString();
     log.info("Client with uuid={} is connecting to instance={}", clientUuid, instanceName);
+    connectedPlayers.incrementAndGet();
+
     if (instanceManager.getInstanceStatus(instanceName).equals(ServerInstance.Status.SUSPENDED)) {
       instanceManager.resumeInstance(instanceName);
     }
 
-    var targetSocket = new Socket(instanceManager.getTargetHost(instanceName), privatePort);
-    var clientInput = clientSocket.getInputStream();
-    var clientOutput = clientSocket.getOutputStream();
-    var targetInput = targetSocket.getInputStream();
-    var targetOutput = targetSocket.getOutputStream();
+    InputStream clientInput;
+    try {
+      var targetSocket = new Socket(instanceManager.getTargetHost(instanceName), privatePort);
+      clientInput = clientSocket.getInputStream();
+      var clientOutput = clientSocket.getOutputStream();
+      var targetInput = targetSocket.getInputStream();
+      var targetOutput = targetSocket.getOutputStream();
 
-    connectedPlayers.incrementAndGet();
+      Thread forwardThread = new Thread(() -> forwardData(clientInput, targetOutput),
+          "FORWARD-THREAD-" + instanceName + "-" + UUID.randomUUID());
+      Thread backwardThread = new Thread(() -> forwardData(targetInput, clientOutput),
+          "BACKWARD-THREAD-" + instanceName + "-" + UUID.randomUUID());
 
-    Thread forwardThread = new Thread(() -> forwardData(clientInput, targetOutput), "FORWARD-THREAD-" + instanceName + "-" + UUID.randomUUID());
-    Thread backwardThread = new Thread(() -> forwardData(targetInput, clientOutput), "BACKWARD-THREAD-" + instanceName + "-" + UUID.randomUUID());
+      forwardThread.start();
+      backwardThread.start();
 
-    forwardThread.start();
-    backwardThread.start();
+      forwardThread.join();
+      backwardThread.join();
 
-    forwardThread.join();
-
-    clientSocket.close();
-    targetSocket.close();
+      clientSocket.close();
+      targetSocket.close();
+    } catch (IOException | InterruptedException e) {
+      log.error("Could not forward data to instance={}", instanceName, e);
+    }
 
     connectedPlayers.decrementAndGet();
     log.info("Client with uuid={} disconnected from instance={}", clientUuid, instanceName);

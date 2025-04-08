@@ -8,15 +8,12 @@ import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.netty.NettyDockerCmdExecFactory;
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.config.ConfigRepresentation;
-import org.acerbulescu.models.DockerInstance;
 import org.acerbulescu.models.ServerInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.io.ByteArrayInputStream;
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -52,9 +49,9 @@ public class DockerClient {
     this.config = config;
   }
 
-  public void startContainer(DockerInstance instance) {
+  public void startContainer(ServerInstance instance) {
     log.info("Starting container for instance={}", instance.getName());
-    dockerClient.startContainerCmd(instance.getId()).exec();
+    dockerClient.startContainerCmd(instance.getName()).exec();
   }
 
   public void pauseContainer(ServerInstance instance) {

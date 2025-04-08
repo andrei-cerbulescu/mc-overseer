@@ -14,29 +14,33 @@ public class ReverseProxyFactory {
     final String value;
   }
 
-  public ReverseProxy from(InstanceManager instanceManager, ServerInstance instance, Protocol protocol) {
+  public ReverseProxy from(InstanceManager instanceManager, String instanceName, Integer publicPort,
+      Integer privatePort, Protocol protocol) {
     if (protocol.equals(Protocol.TCP)) {
-      return tcpFrom(instance, instanceManager);
+      return tcpFrom(instanceManager, instanceName, publicPort,
+          privatePort, protocol);
     }
 
-    return udpFrom(instance, instanceManager);
+    return udpFrom(instanceManager, instanceName, publicPort, privatePort, protocol);
   }
 
-  private ReverseProxy tcpFrom(ServerInstance instance, InstanceManager instanceManager) {
+  private ReverseProxy tcpFrom(InstanceManager instanceManager, String instanceName, Integer publicPort,
+      Integer privatePort, Protocol protocol) {
     return TcpReverseProxyImpl.builder()
         .instanceManager(instanceManager)
-        .instanceName(instance.getName())
-        .publicPort(instance.getPublicPort())
-        .privatePort(instance.getPrivatePort())
+        .instanceName(instanceName)
+        .publicPort(publicPort)
+        .privatePort(privatePort)
         .build();
   }
 
-  private ReverseProxy udpFrom(ServerInstance instance, InstanceManager instanceManager) {
+  private ReverseProxy udpFrom(InstanceManager instanceManager, String instanceName, Integer publicPort,
+      Integer privatePort, Protocol protocol) {
     return UdpReverseProxyImpl.builder()
         .instanceManager(instanceManager)
-        .instanceName(instance.getName())
-        .publicPort(instance.getPublicPort())
-        .privatePort(instance.getPrivatePort())
+        .instanceName(instanceName)
+        .publicPort(publicPort)
+        .privatePort(privatePort)
         .build();
   }
 }

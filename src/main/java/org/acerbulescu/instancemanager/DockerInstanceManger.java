@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import org.acerbulescu.docker.DockerClient;
-import org.acerbulescu.models.DockerInstance;
 import org.acerbulescu.models.ServerInstance;
 import org.acerbulescu.models.ServerInstanceConfigRepresentation;
 import org.acerbulescu.reverseproxy.ReverseProxy;
@@ -26,10 +25,10 @@ public class DockerInstanceManger implements InstanceManager {
 
   DockerClient dockerClient;
 
-  List<DockerInstance> instances = Collections.synchronizedList(new ArrayList<>());
+  List<ServerInstance> instances = Collections.synchronizedList(new ArrayList<>());
 
   @Override
-  public DockerInstance getInstance(String name) {
+  public ServerInstance getInstance(String name) {
     return instances.stream()
         .filter(e -> e.getName().equals(name))
         .findFirst()
@@ -59,7 +58,7 @@ public class DockerInstanceManger implements InstanceManager {
 
     awaitHealthy(containerInstance);
 
-    startReverseProxy(containerInstance);
+    startReverseProxies(containerInstance);
   }
 
   @Override
@@ -72,18 +71,14 @@ public class DockerInstanceManger implements InstanceManager {
     createContainer(instance);
     awaitHealthy(instance);
 
-    startReverseProxy(instance);
+    startReverseProxies(instance);
   }
 
-  DockerInstance createContainer(ServerInstance instance) {
-    var container = dockerClient.createServerContainer(instance);
+  ServerInstance createContainer(ServerInstance instance) {
+    dockerClient.createServerContainer(instance);
+    dockerClient.startContainer(instance);
 
-    var containerInstance = new DockerInstance(instance);
-
-    containerInstance.setId(container.getId());
-    dockerClient.startContainer(containerInstance);
-
-    return containerInstance;
+    return instance;
   }
 
   private void suspendInstance(String instanceName) {
@@ -109,18 +104,18 @@ public class DockerInstanceManger implements InstanceManager {
 
   @Override
   public void stopInstance(String instanceName) {
-    var dockerInstance = getInstance(instanceName);
-    var reverseProxies = dockerInstance.getReverseProxies();
+    var ServerInstance = getInstance(instanceName);
+    var reverseProxies = ServerInstance.getReverseProxies();
     reverseProxies.forEach(e -> {
       if (e != null) {
         e.stop();
       }
     });
 
-    dockerInstance.getReverseProxies().clear();
+    ServerInstance.getReverseProxies().clear();
 
-    dockerClient.stopInstance(dockerInstance);
-    dockerInstance.stop();
+    dockerClient.stopInstance(ServerInstance);
+    ServerInstance.stop();
   }
 
   @Override
@@ -190,11 +185,21 @@ public class DockerInstanceManger implements InstanceManager {
     attemptSuspend(instanceName);
   }
 
-  private void startReverseProxy(ServerInstance instance) {
-    var reverseProxy = reverseProxyFactory.from(this, instance, ReverseProxyFactory.Protocol.TCP);
+  private void startReverseProxies(ServerInstance instance) {
+    var reverseProxy = reverseProxyFactory.from(this, instance.getName(), instance.getPublicPort(),
+        instance.getPrivatePort(), ReverseProxyFactory.Protocol.TCP);
     instance.getReverseProxies().add(reverseProxy);
 
-    new Thread(reverseProxy::start, "SERVER-" + instance.getName() + "-PROXY-MANAGER").start();
+    new Thread(reverseProxy::start, "SERVER-" + instance.getName() + "-MAIN-PROXY").start();
+
+    instance.getPorts().forEach(e -> {
+      var proxy = reverseProxyFactory.from(this, instance.getName(), e.getPublicPort(),
+          e.getPrivatePort(), e.getProtocol());
+
+      instance.getReverseProxies().add(proxy);
+
+      new Thread(proxy::start, "SERVER-" + instance.getName() + "-PROXY-" + e.getPublicPort()).start();
+    });
   }
 
   @SneakyThrows
