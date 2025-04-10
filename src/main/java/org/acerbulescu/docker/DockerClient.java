@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Log4j2
@@ -185,5 +186,14 @@ public class DockerClient {
       log.error("Could not write to container with id={}", containerName, e);
       throw new RuntimeException(e.getMessage());
     }
+  }
+
+  public boolean containerExists(String containerName) {
+    return dockerClient.listContainersCmd()
+        .withShowAll(true)
+        .exec()
+        .stream()
+        .flatMap((container -> Arrays.stream(container.getNames())))
+        .anyMatch(name -> name.equals(containerName));
   }
 }

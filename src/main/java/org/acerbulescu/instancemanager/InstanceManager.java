@@ -10,11 +10,15 @@ public interface InstanceManager {
 
   List<ServerInstance> getInstances();
 
+  List<String> getInstancesNames();
+
   void shutdownAllInstances();
 
   void startInstance(ServerInstance instance);
 
   void startExistingInstance(String instanceName);
+
+  void restartInstanceIfCrashed(String instanceName);
 
   void resumeInstance(String instanceName);
 

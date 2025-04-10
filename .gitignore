@@ -39,5 +39,4 @@ build/
 .DS_Store
 /servers/
 /.idea/
-/config.json
 /config/config.json

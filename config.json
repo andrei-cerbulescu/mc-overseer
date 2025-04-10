@@ -1,0 +1,19 @@
+{
+  "dockerNetwork": "mcdockerseer",
+  "instances": [
+    {
+      "name": "survival",
+      "publicPort": 25566,
+      "privatePort": 25565,
+      "path": "absolute-path-to-jar",
+      "startCommand": "java -Xmx8192M -Xms8192M -jar server.jar",
+      "ports": [
+        {
+          "publicPort": 3333,
+          "privatePort": 4444,
+          "protocol": "TCP"
+        }
+      ]
+    }
+  ]
+}

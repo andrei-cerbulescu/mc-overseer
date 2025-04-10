@@ -1,8 +1,12 @@
 package org.acerbulescu.instancemanager;
 
-import lombok.AllArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.log4j.Log4j2;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.annotation.PreDestroy;
+
 import org.acerbulescu.docker.DockerClient;
 import org.acerbulescu.models.ServerInstance;
 import org.acerbulescu.models.ServerInstanceConfigRepresentation;
@@ -11,11 +15,9 @@ import org.acerbulescu.reverseproxy.ReverseProxyFactory;
 import org.apache.logging.log4j.core.util.Constants;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PreDestroy;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 @Component
@@ -35,10 +37,16 @@ public class DockerInstanceManger implements InstanceManager {
         .orElseThrow(() -> new RuntimeException("Instance could not be found"));
   }
 
+
   @Override
   public List<ServerInstance> getInstances() {
+    return instances;
+  }
+
+  @Override
+  public List<String> getInstancesNames() {
     return instances.stream()
-        .map(e -> (ServerInstance) e)
+        .map(ServerInstance::getName)
         .collect(Collectors.toList());
   }
 
@@ -67,6 +75,22 @@ public class DockerInstanceManger implements InstanceManager {
     if (instance.getStatus().equals(ServerInstance.Status.SHUTDOWN)) {
       instance.start();
     }
+
+    createContainer(instance);
+    awaitHealthy(instance);
+
+    startReverseProxies(instance);
+  }
+
+  @Override
+  public void restartInstanceIfCrashed(String instanceName) {
+    if (dockerClient.containerExists("/" + instanceName)) {
+      return;
+    }
+
+    log.info("Recovering instance={} from crash", instanceName);
+    var instance = getInstance(instanceName);
+    instance.getReverseProxies().forEach(ReverseProxy::stop);
 
     createContainer(instance);
     awaitHealthy(instance);
@@ -119,8 +143,13 @@ public class DockerInstanceManger implements InstanceManager {
   }
 
   @Override
-  public void attemptSuspend(String instanceName) {
+  public synchronized void attemptSuspend(String instanceName) {
     var instance = getInstance(instanceName);
+
+    if (instance.getStatus().equals(ServerInstance.Status.SUSPENDED)) {
+      log.info("Not suspending instance={} due to already being suspended", instance.getName());
+      return;
+    }
 
     if (instance.getStaticConnectionsCounter().get() != 0) {
       log.info("Not suspending instance={} due to existing static connections", instance.getName());
